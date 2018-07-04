@@ -5,7 +5,7 @@ var express = require('express'),
     engines = require('consolidate'),
     assert = require('assert'),
     ObjectId = require('mongodb').ObjectID,
-    url = 'mongodb://jmcdb01:btF60bUrXKjcVSVBRnaUBFR34VuCqkgQYDngvDWglG7GchYaG3lWdwfTGz17p73tXz2fFj3qTULPNanHUpdcZQ==@jmcdb01.documents.azure.com:10255/?ssl=true&replicaSet=globaldb';
+    url = '';
 
 app.use(express.static(__dirname + "/public"));
 
@@ -22,7 +22,7 @@ function errorHandler(err, req, res, next) {
     res.status(500).render("error_template", { error: err});
 }
 
-MongoClient.connect(process.env.MONGODB_URI || url,function(err, db){
+MongoClient.connect(process.env.CUSTOMCONNSTR_ToCosmosDB || url,function(err, db){
     assert.equal(null, err);
     console.log('Successfully connected to MongoDB.');
 
