@@ -5,8 +5,9 @@ var express = require('express'),
     engines = require('consolidate'),
     assert = require('assert'),
     ObjectId = require('mongodb').ObjectID,
-    const appInsights = require("applicationinsights"),
     url = '';
+
+const appInsights = require("applicationinsights");
 
 appInsights.setup(process.env.APPINSIGHTS_KEY);
 appInsights.start();
