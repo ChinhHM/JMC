@@ -7,10 +7,17 @@ var express = require('express'),
     ObjectId = require('mongodb').ObjectID,
     url = '';
 
+// Application Insights initialization
 const appInsights = require("applicationinsights");
 
+// Get AppInsights Instrumentation key via environment variable
 appInsights.setup(process.env.APPINSIGHTS_KEY);
 appInsights.start();
+// Application Insights initialization
+
+//Pagination init
+const paginate = require('express-paginate');
+app.use(paginate.middleware(10, 50));
 
 app.use(express.static(__dirname + "/public"));
 
@@ -32,10 +39,20 @@ MongoClient.connect(process.env.CUSTOMCONNSTR_ToCosmosDB || url,function(err, db
     console.log('Successfully connected to MongoDB.');
 
     var records_collection = db.collection('records');
+    var noOfRecords, pageCount;
 
     app.get('/records', function(req, res, next) {
         // console.log("Received get /records request");
-        records_collection.find({}).toArray(function(err, records){
+        // Query only the records on current page
+        results = records_collection.find({}).limit(req.query.limit).skip(req.skip);
+        records_collection.count({}, function(error, noOfDocs){
+            if (error) console.log(error.message);
+            
+            noOfRecords = noOfDocs;
+            pageCount = Math.ceil(noOfRecords / req.query.limit);
+        });
+        
+        results.toArray(function(err, records){
             if(err) throw err;
 
             if(records.length < 1) {
@@ -43,7 +60,12 @@ MongoClient.connect(process.env.CUSTOMCONNSTR_ToCosmosDB || url,function(err, db
             }
 
             // console.log(records);
-            res.json(records);
+            res.json({
+                recs: records,
+                pgCount: pageCount,
+                itemCount: noOfRecords
+                //pages: paginate.getArrayPages(req)(3, pageCount, req.query.page)
+            });
         });
     });
 
