@@ -10,11 +10,11 @@ var url = '';
 //var url = 'mongodb://jmcdb01:btF60bUrXKjcVSVBRnaUBFR34VuCqkgQYDngvDWglG7GchYaG3lWdwfTGz17p73tXz2fFj3qTULPNanHUpdcZQ==@jmcdb01.documents.azure.com:10255/?ssl=true&replicaSet=globaldb';
 
 // Application Insights initialization
-const appInsights = require("applicationinsights");
+/*const appInsights = require("applicationinsights");
 
 // Get AppInsights Instrumentation key via environment variable
 appInsights.setup(process.env.APPINSIGHTS_KEY);
-appInsights.start();
+appInsights.start();*/
 // Application Insights initialization
 
 //Pagination init
@@ -25,8 +25,8 @@ app.use(paginate.middleware(10, 50));
 var msRestAzure = require('ms-rest-azure');
 var KeyVault = require('azure-keyvault');
 var AuthenticationContext = require('adal-node').AuthenticationContext;
-
-/*var clientId = 'f23d42d6-f2eb-452a-aea7-6b0b8cbd86cc'; // service principal
+/*
+var clientId = 'f23d42d6-f2eb-452a-aea7-6b0b8cbd86cc'; // service principal
 var domain = '72f988bf-86f1-41af-91ab-2d7cd011db47'; // tenant id
 var secret = 'lO8FkYsWqU9G2YzxPe1m3CoYjRdMPZAOU0YwbswABUc=';
 var keyVaultSecretName = 'CUSTOMCONNSTRToCosmosDB';
@@ -109,11 +109,11 @@ async function main(){
     }
 
     // Connect to Redis cache
-    try {
+    /*try {
         RedisClient = redis.createClient(6380, RedisURL, {auth_pass: RedisKey, tls: {servername: RedisURL}});
     } catch (err) {
         Console.log(err);
-    }
+    }*/
 
     // Connect to CosmosDB using the retrieved connection string
     MongoClient.connect(url, function(err, db){
@@ -126,14 +126,14 @@ async function main(){
         app.get('/records', async function(req, res, next) {
             // console.log("Received get /records request");
             // Query only the records on current page
-            if (cacheEnabled) {
+            /*if (cacheEnabled) {
                 cacheResult = await RedisClient.getAsync(req.query.page);
                 if (cacheResult) {
                     console.log("Cache hit, page = " + req.query.page);
                     //console.log("Cached result = " + cacheResult);
                     return res.json(JSON.parse(cacheResult));
                 }
-            }
+            }*/
             
             console.log("Cache missed, querying DB");
             results = records_collection.find({}).limit(req.query.limit).skip(req.skip);
@@ -152,11 +152,11 @@ async function main(){
                 }
     
                 // console.log(records);
-                await RedisClient.set(req.query.page, JSON.stringify({
+                /*await RedisClient.set(req.query.page, JSON.stringify({
                     recs: records,
                     pgCount: pageCount,
                     itemCount: noOfRecords
-                    }));
+                    }));*/
 
                 res.json({
                     recs: records,
@@ -174,8 +174,8 @@ async function main(){
                 console.log(doc);
 
                 // clear cache
-                console.log("DB changed, clearing cache!");
-                await RedisClient.flushall();
+                /*console.log("DB changed, clearing cache!");
+                await RedisClient.flushall();*/
 
                 res.json(doc);
             });
@@ -188,8 +188,8 @@ async function main(){
                 console.log(results);
 
                 // clear cache
-                console.log("DB changed, clearing cache!");
-                await RedisClient.flushall();
+                /*console.log("DB changed, clearing cache!");
+                await RedisClient.flushall();*/
 
                 res.json(results);
             });
@@ -208,8 +208,8 @@ async function main(){
                     console.log(results);
 
                     // clear cache
-                    console.log("DB changed, clearing cache!");
-                    await RedisClient.flushall();
+                    /*console.log("DB changed, clearing cache!");
+                    await RedisClient.flushall();*/
 
                     res.json(results);
             });
