@@ -44,7 +44,7 @@ var vaultUri = `https://${vaultName}.vault.azure.net/`;
 
 // Redis cache
 var cacheEnabled = 1;
-var redis = require('redis');
+//var redis = require('redis');
 
 /*var RedisURL = 'jmccache.redis.cache.windows.net';
 var RedisKey = 'NvWvMg+nJ1fSgPZbftAVmLVje4kBN8VyBW771GaRIug=';*/
@@ -53,7 +53,7 @@ var RedisURL = process.env.REDISURL;
 var RedisKey = process.env.REDISKEY;
 
 var RedisClient;
-var bluebird = require('bluebird');
+//var bluebird = require('bluebird');
 
 /*bluebird.promisifyAll(redis.RedisClient.prototype);
 bluebird.promisifyAll(redis.Multi.prototype);*/
