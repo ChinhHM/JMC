@@ -55,8 +55,8 @@ var RedisKey = process.env.REDISKEY;
 var RedisClient;
 var bluebird = require('bluebird');
 
-bluebird.promisifyAll(redis.RedisClient.prototype);
-bluebird.promisifyAll(redis.Multi.prototype);
+/*bluebird.promisifyAll(redis.RedisClient.prototype);
+bluebird.promisifyAll(redis.Multi.prototype);*/
 
 // Express initialization
 app.use(express.static(__dirname + "/public"));
