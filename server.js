@@ -10,11 +10,11 @@ var url = '';
 //var url = 'mongodb://jmcdb01:btF60bUrXKjcVSVBRnaUBFR34VuCqkgQYDngvDWglG7GchYaG3lWdwfTGz17p73tXz2fFj3qTULPNanHUpdcZQ==@jmcdb01.documents.azure.com:10255/?ssl=true&replicaSet=globaldb';
 
 // Application Insights initialization
-/*const appInsights = require("applicationinsights");
+const appInsights = require("applicationinsights");
 
 // Get AppInsights Instrumentation key via environment variable
-appInsights.setup(process.env.APPINSIGHTS_KEY);
-appInsights.start();*/
+appInsights.setup(process.env.APPINSIGHTS_KEY); // db1e8225-31cb-42b9-9e60-429ad461fb14
+appInsights.start();
 // Application Insights initialization
 
 //Pagination init
@@ -44,19 +44,19 @@ var vaultUri = `https://${vaultName}.vault.azure.net/`;
 
 // Redis cache
 var cacheEnabled = 1;
-//var redis = require('redis');
+var redis = require('redis');
 
 /*var RedisURL = 'jmccache.redis.cache.windows.net';
 var RedisKey = 'NvWvMg+nJ1fSgPZbftAVmLVje4kBN8VyBW771GaRIug=';*/
 
-/*var RedisURL = process.env.REDISURL;
-var RedisKey = process.env.REDISKEY;*/
+var RedisURL = process.env.REDISURL;
+var RedisKey = process.env.REDISKEY;
 
 var RedisClient;
-//var bluebird = require('bluebird');
+var bluebird = require('bluebird');
 
-/*bluebird.promisifyAll(redis.RedisClient.prototype);
-bluebird.promisifyAll(redis.Multi.prototype);*/
+bluebird.promisifyAll(redis.RedisClient.prototype);
+bluebird.promisifyAll(redis.Multi.prototype);
 
 // Express initialization
 app.use(express.static(__dirname + "/public"));
@@ -109,11 +109,11 @@ async function main(){
     }
 
     // Connect to Redis cache
-    /*try {
+    try {
         RedisClient = redis.createClient(6380, RedisURL, {auth_pass: RedisKey, tls: {servername: RedisURL}});
     } catch (err) {
         Console.log(err);
-    }*/
+    }
 
     // Connect to CosmosDB using the retrieved connection string
     MongoClient.connect(url, function(err, db){
@@ -126,14 +126,14 @@ async function main(){
         app.get('/records', async function(req, res, next) {
             // console.log("Received get /records request");
             // Query only the records on current page
-            /*if (cacheEnabled) {
+            if (cacheEnabled) {
                 cacheResult = await RedisClient.getAsync(req.query.page);
                 if (cacheResult) {
                     console.log("Cache hit, page = " + req.query.page);
                     //console.log("Cached result = " + cacheResult);
                     return res.json(JSON.parse(cacheResult));
                 }
-            }*/
+            }
             
             console.log("Cache missed, querying DB");
             results = records_collection.find({}).limit(req.query.limit).skip(req.skip);
@@ -152,11 +152,11 @@ async function main(){
                 }
     
                 // console.log(records);
-                /*await RedisClient.set(req.query.page, JSON.stringify({
+                await RedisClient.set(req.query.page, JSON.stringify({
                     recs: records,
                     pgCount: pageCount,
                     itemCount: noOfRecords
-                    }));*/
+                    }));
 
                 res.json({
                     recs: records,
@@ -174,8 +174,8 @@ async function main(){
                 console.log(doc);
 
                 // clear cache
-                /*console.log("DB changed, clearing cache!");
-                await RedisClient.flushall();*/
+                console.log("DB changed, clearing cache!");
+                await RedisClient.flushall();
 
                 res.json(doc);
             });
@@ -188,8 +188,8 @@ async function main(){
                 console.log(results);
 
                 // clear cache
-                /*console.log("DB changed, clearing cache!");
-                await RedisClient.flushall();*/
+                console.log("DB changed, clearing cache!");
+                await RedisClient.flushall();
 
                 res.json(results);
             });
@@ -208,8 +208,8 @@ async function main(){
                     console.log(results);
 
                     // clear cache
-                    /*console.log("DB changed, clearing cache!");
-                    await RedisClient.flushall();*/
+                    console.log("DB changed, clearing cache!");
+                    await RedisClient.flushall();
 
                     res.json(results);
             });
