@@ -26,15 +26,18 @@
   },
   "homepage": "https://github.com/chhunchha/simplemeanapp#readme",
   "dependencies": {
+    "adal-node": "^0.1.28",
     "angular-ui-bootstrap": "^2.5.6",
     "applicationinsights": "^1.0.3",
     "assert": "^1.4.1",
+    "azure-keyvault": "^3.0.4",
     "body-parser": "^1.15.1",
     "consolidate": "^0.14.1",
     "express": "^4.13.4",
     "express-paginate": "^1.0.0",
     "mongodb": "^2.1.21",
     "mongoose": "^4.4.20",
+    "ms-rest-azure": "^2.5.7",
     "nunjucks": "^2.4.2"
   }
 }

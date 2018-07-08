@@ -4,8 +4,10 @@ var express = require('express'),
     MongoClient = require('mongodb').MongoClient,
     engines = require('consolidate'),
     assert = require('assert'),
-    ObjectId = require('mongodb').ObjectID,
-    url = '';
+    ObjectId = require('mongodb').ObjectID;
+
+var url = '';
+//var url = 'mongodb://jmcdb01:btF60bUrXKjcVSVBRnaUBFR34VuCqkgQYDngvDWglG7GchYaG3lWdwfTGz17p73tXz2fFj3qTULPNanHUpdcZQ==@jmcdb01.documents.azure.com:10255/?ssl=true&replicaSet=globaldb';
 
 // Application Insights initialization
 const appInsights = require("applicationinsights");
@@ -19,6 +21,27 @@ appInsights.start();
 const paginate = require('express-paginate');
 app.use(paginate.middleware(10, 50));
 
+//Key vault variables
+var msRestAzure = require('ms-rest-azure');
+var KeyVault = require('azure-keyvault');
+var AuthenticationContext = require('adal-node').AuthenticationContext;
+
+/*var clientId = 'f23d42d6-f2eb-452a-aea7-6b0b8cbd86cc'; // service principal
+var domain = '72f988bf-86f1-41af-91ab-2d7cd011db47'; // tenant id
+var secret = 'lO8FkYsWqU9G2YzxPe1m3CoYjRdMPZAOU0YwbswABUc=';
+
+var keyVaultSecretName = 'CUSTOMCONNSTRToCosmosDB';
+var vaultName = 'jmckv';*/
+var clientID = process.env.CLIENTID;
+var domain = process.env.TENANTID;
+var secret = process.env.CLIENTSECRET;
+var keyVaultSecretName = process.env.VAULTSECRETNAME;
+var vaultName = process.env.VAULTNAME;
+var version = ''; 
+var keyVaultClient;
+var vaultUri = `https://${vaultName}.vault.azure.net/`;
+
+// Express initialization
 app.use(express.static(__dirname + "/public"));
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -34,77 +57,116 @@ function errorHandler(err, req, res, next) {
     res.status(500).render("error_template", { error: err});
 }
 
-MongoClient.connect(process.env.CUSTOMCONNSTR_ToCosmosDB || url,function(err, db){
-    assert.equal(null, err);
-    console.log('Successfully connected to MongoDB.');
+// Authenticate using ADAL node
+function authenticator(challenge, callback) {
+    // Create a new authentication context.
+    var context = new AuthenticationContext(challenge.authorization);
 
-    var records_collection = db.collection('records');
-    var noOfRecords, pageCount;
+    // Use the context to acquire an authentication token.
+    return context.acquireTokenWithClientCredentials(challenge.resource, clientId, secret, function (err, tokenResponse) {
+        if (err) throw err;
+        // Calculate the value to be set in the request's Authorization header and resume the call.
+        var authorizationValue = tokenResponse.tokenType + ' ' + tokenResponse.accessToken;
+        return callback(null, authorizationValue);
+    });
+}
 
-    app.get('/records', function(req, res, next) {
-        // console.log("Received get /records request");
-        // Query only the records on current page
-        results = records_collection.find({}).limit(req.query.limit).skip(req.skip);
-        records_collection.count({}, function(error, noOfDocs){
-            if (error) console.log(error.message);
+async function main(){
+    // Authenticate to key vault and get secret (connection string to CosmosDB)
+    try {
+        // Login with the service principal created for jmcapp01
+        var init = await msRestAzure.loginWithServicePrincipalSecret(clientId, secret, domain);
+
+        var kvCredentials = new KeyVault.KeyVaultCredentials(authenticator);
+        keyVaultClient = new KeyVault.KeyVaultClient(kvCredentials);
+    
+        // get the secret's value from key vault
+        try {
+            var resultGetSecret = await keyVaultClient.getSecret(vaultUri, keyVaultSecretName, version);
+            //console.log("Secret value = " + JSON.stringify(resultGetSecret.value));
+            url = resultGetSecret.value;
+        } finally {
+        }
+    } catch (err) {
+        console.log(err);
+    }
+
+    // Connect to CosmosDB using the retrieved connection string
+    MongoClient.connect(url, function(err, db){
+        assert.equal(null, err);
+        console.log('Successfully connected to MongoDB.');
+    
+        var records_collection = db.collection('records');
+        var noOfRecords, pageCount;
+    
+        app.get('/records', function(req, res, next) {
+            // console.log("Received get /records request");
+            // Query only the records on current page
+            results = records_collection.find({}).limit(req.query.limit).skip(req.skip);
+            records_collection.count({}, function(error, noOfDocs){
+                if (error) console.log(error.message);
+                
+                noOfRecords = noOfDocs;
+                pageCount = Math.ceil(noOfRecords / req.query.limit);
+            });
             
-            noOfRecords = noOfDocs;
-            pageCount = Math.ceil(noOfRecords / req.query.limit);
-        });
-        
-        results.toArray(function(err, records){
-            if(err) throw err;
-
-            if(records.length < 1) {
-                console.log("No records found.");
-            }
-
-            // console.log(records);
-            res.json({
-                recs: records,
-                pgCount: pageCount,
-                itemCount: noOfRecords
-                //pages: paginate.getArrayPages(req)(3, pageCount, req.query.page)
+            results.toArray(function(err, records){
+                if(err) throw err;
+    
+                if(records.length < 1) {
+                    console.log("No records found.");
+                }
+    
+                // console.log(records);
+                res.json({
+                    recs: records,
+                    pgCount: pageCount,
+                    itemCount: noOfRecords
+                    //pages: paginate.getArrayPages(req)(3, pageCount, req.query.page)
+                });
             });
         });
-    });
-
-    app.post('/records', function(req, res, next){
-        console.log(req.body);
-        records_collection.insert(req.body, function(err, doc) {
-            if(err) throw err;
-            console.log(doc);
-            res.json(doc);
+    
+        app.post('/records', function(req, res, next){
+            console.log(req.body);
+            records_collection.insert(req.body, function(err, doc) {
+                if(err) throw err;
+                console.log(doc);
+                res.json(doc);
+            });
         });
-    });
-
-    app.delete('/records/:id', function(req, res, next){
-        var id = req.params.id;
-        console.log("delete " + id);
-        records_collection.deleteOne({'_id': new ObjectId(id)}, function(err, results){
-            console.log(results);
-            res.json(results);
-        });
-    });
-
-    app.put('/records/:id', function(req, res, next){
-        var id = req.params.id;
-        records_collection.updateOne(
-            {'_id': new ObjectId(id)},
-            { $set: {
-                'name' : req.body.name,
-                'email': req.body.email,
-                'phone': req.body.phone
-                }
-            }, function(err, results){
+    
+        app.delete('/records/:id', function(req, res, next){
+            var id = req.params.id;
+            console.log("delete " + id);
+            records_collection.deleteOne({'_id': new ObjectId(id)}, function(err, results){
                 console.log(results);
                 res.json(results);
+            });
         });
+    
+        app.put('/records/:id', function(req, res, next){
+            var id = req.params.id;
+            records_collection.updateOne(
+                {'_id': new ObjectId(id)},
+                { $set: {
+                    'name' : req.body.name,
+                    'email': req.body.email,
+                    'phone': req.body.phone
+                    }
+                }, function(err, results){
+                    console.log(results);
+                    res.json(results);
+            });
+        });
+    
+        app.use(errorHandler);
+        var server = app.listen(process.env.PORT || 3000, function() {
+            var port = server.address().port;
+            console.log('Express server listening on port %s.', port);
+        })
     });
+}
 
-    app.use(errorHandler);
-    var server = app.listen(process.env.PORT || 3000, function() {
-        var port = server.address().port;
-        console.log('Express server listening on port %s.', port);
-    })
-})
+// main function
+main();
