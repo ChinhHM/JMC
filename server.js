@@ -29,17 +29,34 @@ var AuthenticationContext = require('adal-node').AuthenticationContext;
 /*var clientId = 'f23d42d6-f2eb-452a-aea7-6b0b8cbd86cc'; // service principal
 var domain = '72f988bf-86f1-41af-91ab-2d7cd011db47'; // tenant id
 var secret = 'lO8FkYsWqU9G2YzxPe1m3CoYjRdMPZAOU0YwbswABUc=';
-
 var keyVaultSecretName = 'CUSTOMCONNSTRToCosmosDB';
 var vaultName = 'jmckv';*/
+
 var clientID = process.env.CLIENTID;
 var domain = process.env.TENANTID;
 var secret = process.env.CLIENTSECRET;
 var keyVaultSecretName = process.env.VAULTSECRETNAME;
 var vaultName = process.env.VAULTNAME;
+
 var version = ''; 
 var keyVaultClient;
 var vaultUri = `https://${vaultName}.vault.azure.net/`;
+
+// Redis cache
+var cacheEnabled = 1;
+var redis = require('redis');
+
+/*var RedisURL = 'jmccache.redis.cache.windows.net';
+var RedisKey = 'NvWvMg+nJ1fSgPZbftAVmLVje4kBN8VyBW771GaRIug=';*/
+
+var RedisURL = process.env.REDISURL;
+var RedisKey = process.env.REDISKEY;
+
+var RedisClient;
+var bluebird = require('bluebird');
+
+bluebird.promisifyAll(redis.RedisClient.prototype);
+bluebird.promisifyAll(redis.Multi.prototype);
 
 // Express initialization
 app.use(express.static(__dirname + "/public"));
@@ -91,17 +108,34 @@ async function main(){
         console.log(err);
     }
 
+    // Connect to Redis cache
+    try {
+        RedisClient = redis.createClient(6380, RedisURL, {auth_pass: RedisKey, tls: {servername: RedisURL}});
+    } catch (err) {
+        Console.log(err);
+    }
+
     // Connect to CosmosDB using the retrieved connection string
     MongoClient.connect(url, function(err, db){
         assert.equal(null, err);
         console.log('Successfully connected to MongoDB.');
     
         var records_collection = db.collection('records');
-        var noOfRecords, pageCount;
+        var noOfRecords, pageCount, cacheResult;
     
-        app.get('/records', function(req, res, next) {
+        app.get('/records', async function(req, res, next) {
             // console.log("Received get /records request");
             // Query only the records on current page
+            if (cacheEnabled) {
+                cacheResult = await RedisClient.getAsync(req.query.page);
+                if (cacheResult) {
+                    console.log("Cache hit, page = " + req.query.page);
+                    //console.log("Cached result = " + cacheResult);
+                    return res.json(JSON.parse(cacheResult));
+                }
+            }
+            
+            console.log("Cache missed, querying DB");
             results = records_collection.find({}).limit(req.query.limit).skip(req.skip);
             records_collection.count({}, function(error, noOfDocs){
                 if (error) console.log(error.message);
@@ -110,7 +144,7 @@ async function main(){
                 pageCount = Math.ceil(noOfRecords / req.query.limit);
             });
             
-            results.toArray(function(err, records){
+            results.toArray(async function(err, records){
                 if(err) throw err;
     
                 if(records.length < 1) {
@@ -118,6 +152,12 @@ async function main(){
                 }
     
                 // console.log(records);
+                await RedisClient.set(req.query.page, JSON.stringify({
+                    recs: records,
+                    pgCount: pageCount,
+                    itemCount: noOfRecords
+                    }));
+
                 res.json({
                     recs: records,
                     pgCount: pageCount,
@@ -129,9 +169,14 @@ async function main(){
     
         app.post('/records', function(req, res, next){
             console.log(req.body);
-            records_collection.insert(req.body, function(err, doc) {
+            records_collection.insert(req.body, async function(err, doc) {
                 if(err) throw err;
                 console.log(doc);
+
+                // clear cache
+                console.log("DB changed, clearing cache!");
+                await RedisClient.flushall();
+
                 res.json(doc);
             });
         });
@@ -139,8 +184,13 @@ async function main(){
         app.delete('/records/:id', function(req, res, next){
             var id = req.params.id;
             console.log("delete " + id);
-            records_collection.deleteOne({'_id': new ObjectId(id)}, function(err, results){
+            records_collection.deleteOne({'_id': new ObjectId(id)}, async function(err, results){
                 console.log(results);
+
+                // clear cache
+                console.log("DB changed, clearing cache!");
+                await RedisClient.flushall();
+
                 res.json(results);
             });
         });
@@ -154,8 +204,13 @@ async function main(){
                     'email': req.body.email,
                     'phone': req.body.phone
                     }
-                }, function(err, results){
+                }, async function(err, results){
                     console.log(results);
+
+                    // clear cache
+                    console.log("DB changed, clearing cache!");
+                    await RedisClient.flushall();
+
                     res.json(results);
             });
         });
