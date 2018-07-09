@@ -13,7 +13,8 @@ var url = '';
 const appInsights = require("applicationinsights");
 
 // Get AppInsights Instrumentation key via environment variable
-appInsights.setup(process.env.APPINSIGHTS_KEY); // db1e8225-31cb-42b9-9e60-429ad461fb14
+//appInsights.setup(process.env.APPINSIGHTS_KEY); // db1e8225-31cb-42b9-9e60-429ad461fb14
+appInsights.setup('db1e8225-31cb-42b9-9e60-429ad461fb14');
 appInsights.start();
 // Application Insights initialization
 
@@ -25,18 +26,18 @@ app.use(paginate.middleware(10, 50));
 var msRestAzure = require('ms-rest-azure');
 var KeyVault = require('azure-keyvault');
 var AuthenticationContext = require('adal-node').AuthenticationContext;
-/*
+
 var clientId = 'f23d42d6-f2eb-452a-aea7-6b0b8cbd86cc'; // service principal
 var domain = '72f988bf-86f1-41af-91ab-2d7cd011db47'; // tenant id
 var secret = 'lO8FkYsWqU9G2YzxPe1m3CoYjRdMPZAOU0YwbswABUc=';
 var keyVaultSecretName = 'CUSTOMCONNSTRToCosmosDB';
-var vaultName = 'jmckv';*/
+var vaultName = 'jmckv';
 
-var clientID = process.env.CLIENTID;
+/*var clientID = process.env.CLIENTID;
 var domain = process.env.TENANTID;
 var secret = process.env.CLIENTSECRET;
 var keyVaultSecretName = process.env.VAULTSECRETNAME;
-var vaultName = process.env.VAULTNAME;
+var vaultName = process.env.VAULTNAME;*/
 
 var version = ''; 
 var keyVaultClient;
@@ -46,11 +47,11 @@ var vaultUri = `https://${vaultName}.vault.azure.net/`;
 var cacheEnabled = 1;
 var redis = require('redis');
 
-/*var RedisURL = 'jmccache.redis.cache.windows.net';
-var RedisKey = 'NvWvMg+nJ1fSgPZbftAVmLVje4kBN8VyBW771GaRIug=';*/
+var RedisURL = 'jmccache.redis.cache.windows.net';
+var RedisKey = 'NvWvMg+nJ1fSgPZbftAVmLVje4kBN8VyBW771GaRIug=';
 
-var RedisURL = process.env.REDISURL;
-var RedisKey = process.env.REDISKEY;
+/*var RedisURL = process.env.REDISURL;
+var RedisKey = process.env.REDISKEY;*/
 
 var RedisClient;
 var bluebird = require('bluebird');
