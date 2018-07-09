@@ -33,7 +33,7 @@ var secret = 'lO8FkYsWqU9G2YzxPe1m3CoYjRdMPZAOU0YwbswABUc=';
 var keyVaultSecretName = 'CUSTOMCONNSTRToCosmosDB';
 var vaultName = 'jmckv';*/
 
-var clientID = process.env.CLIENTID;
+var clientId = process.env.CLIENTID;
 var domain = process.env.TENANTID;
 var secret = process.env.CLIENTSECRET;
 var keyVaultSecretName = process.env.VAULTSECRETNAME;
@@ -101,7 +101,7 @@ async function main(){
         // get the secret's value from key vault
         try {
             var resultGetSecret = await keyVaultClient.getSecret(vaultUri, keyVaultSecretName, version);
-            //console.log("Secret value = " + JSON.stringify(resultGetSecret.value));
+            console.log("Connection string =  " + JSON.stringify(resultGetSecret.value));
             url = resultGetSecret.value;
         } finally {
         }
