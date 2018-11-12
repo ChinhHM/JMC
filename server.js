@@ -113,7 +113,7 @@ async function main(){
     // Connect to Redis cache
     try {
         RedisClient = redis.createClient(6380, RedisURL, {auth_pass: RedisKey, tls: {servername: RedisURL}});
-        RedisClient.flushall();
+        await RedisClient.flushallAsync();
     } catch (err) {
         Console.log(err);
     }
