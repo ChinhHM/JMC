@@ -14,7 +14,7 @@ const appInsights = require("applicationinsights");
 
 // Get AppInsights Instrumentation key via environment variable
 appInsights.setup(process.env.APPINSIGHTS_KEY); // db1e8225-31cb-42b9-9e60-429ad461fb14
-//appInsights.setup('db1e8225-31cb-42b9-9e60-429ad461fb14');
+appInsights.setup('db1e8225-31cb-42b9-9e60-429ad461fb14');
 appInsights.start();
 // Application Insights initialization
 
@@ -45,6 +45,7 @@ var vaultUri = `https://${vaultName}.vault.azure.net/`;
 
 // Redis cache
 var cacheEnabled = 1;
+//var cacheEnabled = 0;
 var redis = require('redis');
 
 /*var RedisURL = 'jmccache.redis.cache.windows.net';
@@ -112,6 +113,7 @@ async function main(){
     // Connect to Redis cache
     try {
         RedisClient = redis.createClient(6380, RedisURL, {auth_pass: RedisKey, tls: {servername: RedisURL}});
+        RedisClient.flushall();
     } catch (err) {
         Console.log(err);
     }
@@ -122,17 +124,28 @@ async function main(){
         console.log('Successfully connected to MongoDB.');
     
         var records_collection = db.collection('records');
-        var noOfRecords, pageCount, cacheResult;
+        var noOfRecords, pageCount, cacheResult, nCurrentPage;
+        var bFlushLastPage = false;
+        var nRecordsPerPage;
+        var nPageToRefresh = 0;
     
         app.get('/records', async function(req, res, next) {
             // console.log("Received get /records request");
             // Query only the records on current page
+            nCurrentPage = req.query.page;
             if (cacheEnabled) {
-                cacheResult = await RedisClient.getAsync(req.query.page);
-                if (cacheResult) {
-                    console.log("Cache hit, page = " + req.query.page);
-                    //console.log("Cached result = " + cacheResult);
-                    return res.json(JSON.parse(cacheResult));
+                //console.log("pageCount = " + pageCount + " page requested = " + nCurrentPage + " flush =" + bFlushLastPage + " no of records = " + noOfRecords + " page to refresh = " + nPageToRefresh);
+                // If current page is not the last page, and bFlushLastPage is not flagged (i.e, no new record added)
+                // and the current page is not updated -> query cache
+                if (!((pageCount === req.query.page)&&(bFlushLastPage)) && (nCurrentPage != nPageToRefresh)) {
+                    cacheResult = await RedisClient.getAsync(req.query.page);
+                    if (cacheResult) {
+                        console.log("Cache hit, page = " + req.query.page);
+                        //console.log("Cached result = " + cacheResult);
+                        bFlushLastPage = false; // reset last page flag
+                        nPageToRefresh = 0; // reset page to refresh
+                        return res.json(JSON.parse(cacheResult));
+                    }
                 }
             }
             
@@ -143,6 +156,7 @@ async function main(){
                 
                 noOfRecords = noOfDocs;
                 pageCount = Math.ceil(noOfRecords / req.query.limit);
+                nRecordsPerPage = req.query.limit;
             });
             
             results.toArray(async function(err, records){
@@ -175,9 +189,26 @@ async function main(){
                 console.log(doc);
 
                 // clear cache
-                console.log("DB changed, clearing cache!");
-                await RedisClient.flushall();
-
+                //console.log("DB changed, clearing cache!");
+                //await RedisClient.flushall();
+                
+                // Flush cache strategy:
+                // - If current page is last page, check if the page is cached, if yes, flag the page to be invalidated. On the next GET request, we will need to bypass the cache
+                // - If the added record belongs to new page, notify the server to bypass cache for the next GET (we need to query DB to get new number of records and pages)
+                noOfRecords++;
+                var nNewPageCount = Math.ceil(noOfRecords / nRecordsPerPage);
+                if (nNewPageCount === pageCount) { // record added on the same page
+                    pageCount = nNewPageCount;
+                    var reply = await RedisClient.existsAsync(pageCount);
+                    if (reply === 1) {
+                        bFlushLastPage = true;
+                        console.log("last page, pageCount = " + pageCount);
+                    }
+                }
+                else { // record added on new page
+                    bFlushLastPage = true;
+                }
+                
                 res.json(doc);
             });
         });
@@ -209,8 +240,12 @@ async function main(){
                     console.log(results);
 
                     // clear cache
-                    console.log("DB changed, clearing cache!");
-                    await RedisClient.flushall();
+                    //console.log("DB changed, clearing cache!");
+                    //await RedisClient.flushall();
+
+                    // Flush cache strategy:
+                    // - Notify server to bypass cache for current page
+                    nPageToRefresh = nCurrentPage;
 
                     res.json(results);
             });

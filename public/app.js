@@ -16,6 +16,7 @@ function AppCtrl($scope, $http) {
     vm.record = {};
     vm.records = [];
     $scope.currentPage = 1;
+    $scope.maxSize = 10; // max number of buttons
     
     vm.handleError = function(response) {
         console.log(response.status + " - " + response.statusText + " - " + response.data);

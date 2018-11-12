@@ -42,7 +42,7 @@
                 
             </table>
 
-            <ul uib-pagination total-items="ctrl.data.itemCount" ng-model="currentPage" ng-change="pageChanged()"></ul>
+            <ul uib-pagination boundary-link="true" boundary-link-numbers="true" total-items="ctrl.data.itemCount" ng-model="currentPage" ng-change="pageChanged()" rotate="true" max-size="maxSize"></ul>
 
         </div>
         <script src="https://code.jquery.com/jquery-2.2.4.min.js"   integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="   crossorigin="anonymous"></script>
