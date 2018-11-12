@@ -14,7 +14,7 @@ const appInsights = require("applicationinsights");
 
 // Get AppInsights Instrumentation key via environment variable
 appInsights.setup(process.env.APPINSIGHTS_KEY); // db1e8225-31cb-42b9-9e60-429ad461fb14
-appInsights.setup('db1e8225-31cb-42b9-9e60-429ad461fb14');
+//appInsights.setup('db1e8225-31cb-42b9-9e60-429ad461fb14');
 appInsights.start();
 // Application Insights initialization
 
@@ -49,10 +49,13 @@ var cacheEnabled = 1;
 var redis = require('redis');
 
 /*var RedisURL = 'jmccache.redis.cache.windows.net';
+var RedisKeyName = 'RedisKey';
 var RedisKey = 'NvWvMg+nJ1fSgPZbftAVmLVje4kBN8VyBW771GaRIug=';*/
 
 var RedisURL = process.env.REDISURL;
-var RedisKey = process.env.REDISKEY;
+//var RedisKey = process.env.REDISKEY;
+var RedisKey = '';
+var RedisKeyName = process.env.REDISKEYNAME;
 
 var RedisClient;
 var bluebird = require('bluebird');
@@ -101,9 +104,15 @@ async function main(){
     
         // get the secret's value from key vault
         try {
+            // Get connection string to CosmosDB
             var resultGetSecret = await keyVaultClient.getSecret(vaultUri, keyVaultSecretName, version);
             console.log("Connection string =  " + JSON.stringify(resultGetSecret.value));
             url = resultGetSecret.value;
+
+            // Get Redis key 
+            resultGetSecret = await keyVaultClient.getSecret(vaultUri, RedisKeyName, version);
+            console.log("Redis key = " + JSON.stringify(resultGetSecret.value));
+            RedisKey = resultGetSecret.value;
         } finally {
         }
     } catch (err) {
